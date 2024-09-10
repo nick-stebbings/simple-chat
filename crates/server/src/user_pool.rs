@@ -1,5 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use crate::user::User;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     sync::RwLock,
@@ -26,14 +28,22 @@ where
     }
 
     /**
-     * Adds a user to the user pool.
+     * Adds a unique user to the user pool.
      */
     pub async fn add_user(&self, user: User<S>) {
         let mut hashmap = self.users.write().await;
-        hashmap.insert(user.username.clone(), user);
+
+        let username = user.username.clone();
+        match hashmap.entry(username) {
+            Entry::Occupied(_) => {
+                let _ = user.msg_sender.send("Username is taken".to_string()).await;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(user);
+            }
+        }
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,5 +104,36 @@ mod tests {
         // Assert
         assert!(users.contains_key("anon"));
         assert!(users.contains_key("anon2"));
+    }
+    #[tokio::test]
+    async fn test_add_same_username() {
+        // Arrange
+        let (stream1, _) = duplex(64);
+        let (stream2, __) = duplex(64);
+
+        let user_pool = UserPool::<DuplexStream>::new();
+        let (tx1, rx1) = mpsc::channel(50);
+        let (tx2, rx2) = mpsc::channel(50);
+        let user1 = User {
+            username: "anon".to_string(),
+            msg_sender: tx1,
+            msg_receiver: rx1,
+            stream: stream1,
+        };
+        let user2 = User {
+            username: "anon".to_string(),
+            msg_sender: tx2,
+            msg_receiver: rx2,
+            stream: stream2,
+        };
+
+        // Act
+        user_pool.add_user(user1).await;
+        user_pool.add_user(user2).await;
+        let users = user_pool.users.read().await;
+
+        // Assert
+        assert!(users.contains_key("anon"));
+        assert_eq!(users.len(), 1);
     }
 }
