@@ -43,6 +43,15 @@ where
             }
         }
     }
+    /**
+     * Removes a user from the user pool
+     */
+    pub async fn remove_user_with_username(&self, username: String) {
+        let mut hashmap = self.users.write().await;
+        if let Entry::Occupied(entry) = hashmap.entry(username) {
+            entry.remove();
+        }
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -135,5 +144,28 @@ mod tests {
         // Assert
         assert!(users.contains_key("anon"));
         assert_eq!(users.len(), 1);
+    }
+    #[tokio::test]
+    async fn test_drop_user() {
+        // Arrange
+        let (stream1, _) = duplex(64);
+
+        let user_pool = UserPool::<DuplexStream>::new();
+        let (tx1, rx1) = mpsc::channel(50);
+        let user1 = User {
+            username: "anon".to_string(),
+            msg_sender: tx1,
+            msg_receiver: rx1,
+            stream: stream1,
+        };
+
+        // Act
+        let username = user1.username.clone();
+        user_pool.add_user(user1).await;
+        user_pool.remove_user_with_username(username).await;
+        let users = user_pool.users.read().await;
+
+        // Assert
+        assert_eq!(users.len(), 0);
     }
 }
