@@ -7,7 +7,7 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["macros", "io-util", "net", "rt-multi-thread", "sync"] }
+tokio = { version = "1", features = ["macros", "io-util", "net", "rt-multi-thread", "sync", "time"] }
 serde = { version = "1", features = ["derive"]}
 bytes = "1"
 

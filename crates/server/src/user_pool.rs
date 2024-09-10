@@ -81,7 +81,7 @@ mod tests {
         let (stream1, _stream2) = duplex(64);
 
         let user_pool = UserPool::<DuplexStream>::new();
-        let (tx, rx) = mpsc::channel(50);
+        let (tx, rx) = mpsc::channel(5);
         let user = User {
             username: "anon".to_string(),
             msg_sender: tx,
@@ -103,8 +103,8 @@ mod tests {
         let (stream2, __) = duplex(64);
 
         let user_pool = UserPool::<DuplexStream>::new();
-        let (tx1, rx1) = mpsc::channel(50);
-        let (tx2, rx2) = mpsc::channel(50);
+        let (tx1, rx1) = mpsc::channel(5);
+        let (tx2, rx2) = mpsc::channel(5);
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
@@ -134,8 +134,8 @@ mod tests {
         let (stream2, __) = duplex(64);
 
         let user_pool = UserPool::<DuplexStream>::new();
-        let (tx1, rx1) = mpsc::channel(50);
-        let (tx2, rx2) = mpsc::channel(50);
+        let (tx1, rx1) = mpsc::channel(5);
+        let (tx2, rx2) = mpsc::channel(5);
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
@@ -152,7 +152,8 @@ mod tests {
         // Act
         user_pool.add_user(user1).await;
         user_pool.add_user(user2).await;
-        let users = user_pool.users.read().await;
+        let users: tokio::sync::RwLockReadGuard<'_, HashMap<String, User<DuplexStream>>> =
+            user_pool.users.read().await;
 
         // Assert
         assert!(users.contains_key("anon"));
@@ -164,7 +165,7 @@ mod tests {
         let (stream1, _) = duplex(64);
 
         let user_pool = UserPool::<DuplexStream>::new();
-        let (tx1, rx1) = mpsc::channel(50);
+        let (tx1, rx1) = mpsc::channel(5);
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
@@ -188,8 +189,8 @@ mod tests {
         let (stream2, __) = duplex(64);
 
         let user_pool = UserPool::<DuplexStream>::new();
-        let (tx1, rx1) = mpsc::channel(50);
-        let (tx2, rx2) = mpsc::channel(50);
+        let (tx1, rx1) = mpsc::channel(5);
+        let (tx2, rx2) = mpsc::channel(5);
         let rx2_by_ref = Arc::new(Mutex::new(rx2));
 
         let user1 = User {
@@ -211,12 +212,53 @@ mod tests {
         user_pool.add_user(user2).await;
 
         user_pool.broadcast(user1_name, "Hello world!").await;
-        let users = user_pool.users.read().await;
 
         // Assert
 
         let rx2_ref_temp = rx2_by_ref.clone();
         let mut rx2_ref = rx2_ref_temp.lock().await;
         assert_eq!(rx2_ref.recv().await, Some("Hello world!".to_string()));
+    }
+    #[tokio::test]
+    async fn test_user_does_not_receive_own_sent_message() {
+        // Arrange
+        let (stream1, _) = duplex(64);
+        let (stream2, __) = duplex(64);
+
+        let user_pool = UserPool::<DuplexStream>::new();
+        let (tx1, rx1) = mpsc::channel(5);
+        let (tx2, rx2) = mpsc::channel(5);
+        let rx1_by_ref = Arc::new(Mutex::new(rx1));
+        let rx2_by_ref = Arc::new(Mutex::new(rx2));
+
+        let user1 = User {
+            username: "anon".to_string(),
+            msg_sender: tx1.clone(),
+            msg_receiver: rx1_by_ref.clone(),
+            stream: stream1,
+        };
+        let user2 = User {
+            username: "anon2".to_string(),
+            msg_sender: tx2,
+            msg_receiver: rx2_by_ref.clone(),
+            stream: stream2,
+        };
+
+        // Act
+        let user1_name = user1.username.clone();
+        user_pool.add_user(user1).await;
+        user_pool.add_user(user2).await;
+
+        user_pool.broadcast(user1_name, "Hello world!").await;
+
+        // Assert
+
+        let rx1_ref_temp = rx1_by_ref.clone();
+        let mut rx1_ref = rx1_ref_temp.lock().await;
+        // We are only testing that a None value is taken from the receiver channel, so can panic otherwise
+        match rx1_ref.try_recv().ok() {
+            Some(_) => panic!("User 1 should not receive their own message"),
+            None => assert!(true),
+        }
     }
 }

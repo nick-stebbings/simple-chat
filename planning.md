@@ -4,8 +4,8 @@
 ### Basic requirements
 - one chat room.
 - users may freely join or leave (no auth/authz)
-- user may send messages to the room
-- messages will be sent to all connected users minus the sender.
+- ~~user may send messages to the room~~
+- ~~messages will be sent to all connected users minus the sender.~~
 
 - high throughput: all code should be non-blocking for maximum concurrency.
 
