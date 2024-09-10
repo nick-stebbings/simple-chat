@@ -14,7 +14,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tokio::spawn(async move {
             let (mut reader, mut writer) = socket.split();
             let mut buf = vec![0; 1024];
-
         });
     }
 }

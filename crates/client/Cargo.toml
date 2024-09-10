@@ -3,6 +3,13 @@ name = "client"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+path = "src/main.rs"
+name = "client"
+
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 clap = { version = "4.5.17", features = ["derive"] }
