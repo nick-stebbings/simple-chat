@@ -10,3 +10,8 @@ path = "src/lib.rs"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 serde = { version = "1", features = ["derive"]}
 bytes = "1"
+
+[dev-dependencies.cargo-husky]
+version = "1"
+default-features = false
+features = ["precommit-hook", "run-cargo-test", "run-cargo-clippy", "run-cargo-fmt"]
