@@ -52,13 +52,26 @@ where
             entry.remove();
         }
     }
+    /**
+     * Broadcasts a message to all other users
+     */
+    pub async fn broadcast(&self, sender_username: String, message: &str) {
+        let users = self.users.read().await;
+        for (username, user) in users.iter() {
+            if username.as_str() != sender_username {
+                let _ = user.msg_sender.send(message.to_string()).await;
+            }
+        }
+    }
 }
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use tokio::{
         io::{duplex, DuplexStream},
-        sync::mpsc,
+        sync::{mpsc, Mutex},
     };
 
     #[tokio::test]
@@ -72,7 +85,7 @@ mod tests {
         let user = User {
             username: "anon".to_string(),
             msg_sender: tx,
-            msg_receiver: rx,
+            msg_receiver: Arc::new(Mutex::new(rx)),
             stream: stream1,
         };
 
@@ -95,13 +108,13 @@ mod tests {
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
-            msg_receiver: rx1,
+            msg_receiver: Arc::new(Mutex::new(rx1)),
             stream: stream1,
         };
         let user2 = User {
             username: "anon2".to_string(),
             msg_sender: tx2,
-            msg_receiver: rx2,
+            msg_receiver: Arc::new(Mutex::new(rx2)),
             stream: stream2,
         };
 
@@ -126,13 +139,13 @@ mod tests {
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
-            msg_receiver: rx1,
+            msg_receiver: Arc::new(Mutex::new(rx1)),
             stream: stream1,
         };
         let user2 = User {
             username: "anon".to_string(),
             msg_sender: tx2,
-            msg_receiver: rx2,
+            msg_receiver: Arc::new(Mutex::new(rx2)),
             stream: stream2,
         };
 
@@ -155,7 +168,7 @@ mod tests {
         let user1 = User {
             username: "anon".to_string(),
             msg_sender: tx1,
-            msg_receiver: rx1,
+            msg_receiver: Arc::new(Mutex::new(rx1)),
             stream: stream1,
         };
 
@@ -167,5 +180,43 @@ mod tests {
 
         // Assert
         assert_eq!(users.len(), 0);
+    }
+    #[tokio::test]
+    async fn test_user_sends_message() {
+        // Arrange
+        let (stream1, _) = duplex(64);
+        let (stream2, __) = duplex(64);
+
+        let user_pool = UserPool::<DuplexStream>::new();
+        let (tx1, rx1) = mpsc::channel(50);
+        let (tx2, rx2) = mpsc::channel(50);
+        let rx2_by_ref = Arc::new(Mutex::new(rx2));
+
+        let user1 = User {
+            username: "anon".to_string(),
+            msg_sender: tx1.clone(),
+            msg_receiver: Arc::new(Mutex::new(rx1)),
+            stream: stream1,
+        };
+        let user2 = User {
+            username: "anon2".to_string(),
+            msg_sender: tx2,
+            msg_receiver: rx2_by_ref.clone(),
+            stream: stream2,
+        };
+
+        // Act
+        let user1_name = user1.username.clone();
+        user_pool.add_user(user1).await;
+        user_pool.add_user(user2).await;
+
+        user_pool.broadcast(user1_name, "Hello world!").await;
+        let users = user_pool.users.read().await;
+
+        // Assert
+
+        let rx2_ref_temp = rx2_by_ref.clone();
+        let mut rx2_ref = rx2_ref_temp.lock().await;
+        assert_eq!(rx2_ref.recv().await, Some("Hello world!".to_string()));
     }
 }
