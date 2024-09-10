@@ -11,11 +11,11 @@
 
 ### Extra requirements
 - include both unit and integration tests where necessary.
-- format using the standard formatting tool.
+- ~~format using the standard formatting tool.~~
 - code must compile without clippy errors.
 
 ### Bonus
-- git commit hook for formatting, compilation, linting
+- ~~git commit hook for formatting, compilation, linting~~
 - GH action send a message from client to server without failure, run on push/commit to main
 
 ## User Stories
@@ -62,11 +62,11 @@ The server should be able to support many users with a small memory footprint
 - tokio
  -- spawn
  -- messaging
- -- tcp
+ -- ~~tcp~~
 - clap
  - args: [username, msg]
-- serde
-- dotenv
+- ~~serde~~
+- ~~dotenv~~
 
 ## Data structures
 ### User
