@@ -53,7 +53,7 @@
 ### Performance
 The server should be able to support many users without a large delay
   -- use tokio to spawn a thread for each user
-  -- use Rwlock as users will be written far less than read.
+  -- ~~use Rwlock as users will be written far less than read.~~
   -- Use Arc to pass multiple shared references to a mutable UserPool
 The server should be able to support many users with a small memory footprint
  -- use lazy async in tokio, preserving memory
@@ -70,8 +70,8 @@ The server should be able to support many users with a small memory footprint
 
 ## Data structures
 ### User
-struct User
-  username - String
+~~struct User~~
+  ~~username - String
   msg_sender - Sender
   msg_receiver - Receiver
   strem - TCPStream
@@ -79,7 +79,7 @@ struct User
 - Sends and receives messages to other users
 
 ### User Manager
-struct UserPool
+~~struct UserPool~~
   users: RWLock<HashMap<String, User>> (username -> user)
 #### Responsibilities:
 - Keeps track of server users
