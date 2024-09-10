@@ -1,6 +1,9 @@
 use crate::user::User;
-use std::{collections::HashMap, sync::RwLock};
-use tokio::io::{AsyncRead, AsyncWrite};
+use std::collections::HashMap;
+use tokio::{
+    io::{AsyncRead, AsyncWrite},
+    sync::RwLock,
+};
 
 /**
  * Manages the Users. Generic over a stream so that TcpStream can be mocked in unit tests.
@@ -26,12 +29,11 @@ where
      * Adds a user to the user pool.
      */
     pub async fn add_user(&self, user: User<S>) {
-        if let Ok(mut hashmap) = self.users.write() {
-            let username = user.username.clone();
-            hashmap.insert(username, user);
-        }
+        let mut hashmap = self.users.write().await;
+        hashmap.insert(user.username.clone(), user);
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -57,7 +59,7 @@ mod tests {
 
         // Act
         user_pool.add_user(user).await;
-        let users = user_pool.users.read().unwrap();
+        let users = user_pool.users.read().await;
 
         // Assert
         assert!(users.contains_key("anon"));
@@ -87,7 +89,7 @@ mod tests {
         // Act
         user_pool.add_user(user1).await;
         user_pool.add_user(user2).await;
-        let users = user_pool.users.read().unwrap();
+        let users = user_pool.users.read().await;
 
         // Assert
         assert!(users.contains_key("anon"));
