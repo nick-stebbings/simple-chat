@@ -13,5 +13,4 @@ path = "src/lib.rs"
 [dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 clap = { version = "4.5.17", features = ["derive"] }
-serde = { version = "1", features = ["derive"]}
-envy = "0.4.2"
+common = { path = "../common" }

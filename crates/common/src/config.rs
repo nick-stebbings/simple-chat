@@ -1,6 +1,7 @@
-use std::error::Error;
-
+#![allow(dead_code)]
+#![allow(unused_variables)]
 use serde::Deserialize;
+use std::error::Error;
 
 #[derive(Deserialize, Debug)]
 pub struct Config {

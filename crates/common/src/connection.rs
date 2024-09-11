@@ -1,11 +1,12 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
-use crate::command::Command;
 use bytes::BytesMut;
 use futures_util::*;
 use tokio::io::{self, BufWriter};
 use tokio::net::TcpStream;
 use tokio_util::codec::{FramedRead, LinesCodec};
+
+use crate::command::Command;
 pub struct Connection {
     stream: BufWriter<TcpStream>,
     buffer: BytesMut,
