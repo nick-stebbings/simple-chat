@@ -4,7 +4,7 @@ mod user_pool;
 use tokio::net::TcpListener;
 
 #[tokio::main]
-async fn _main() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let listener = TcpListener::bind("127.0.0.1:8080").await?;
     println!("Server running on 127.0.0.1:8080");
 

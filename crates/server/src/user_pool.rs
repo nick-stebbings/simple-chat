@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
 use crate::user::User;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::{
