@@ -11,7 +11,7 @@ pub async fn run_cli(tx: Arc<Sender<Command>>) {
     let mut reader = FramedRead::new(stdin, LinesCodec::new());
 
     loop {
-        print!("\n\rEnter command (send <MSG>/leave): ");
+        println!("\n\rEnter command (send <MSG>/leave): ");
 
         let line = match reader.next().await.transpose() {
             Ok(Some(line)) => line.trim().to_string(),

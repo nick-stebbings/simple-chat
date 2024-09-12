@@ -22,13 +22,13 @@
 ### Client
   User Story 1: Connect to the Server
     As a client user,
-    I want to specify the host, port, and username via environment variables or command line arguments, so that I can connect to the chat server with my unique identifier.
+    ~~I want to specify the host, port, and username via environment ~~variables or command line arguments, so that I can connect to the chat server with my unique identifier.
 
-  User Story 2: Automatic Connection
+  ~~User Story 2: Automatic Connection~~
     As a client user,
     I want the client to automatically connect to the chat server upon initialization using the specified host and port, so that I can start chatting without manual connection steps.
 
-  User Story 3: Interactive Command Prompt
+  ~~User Story 3: Interactive Command Prompt~~
     As a client user,
     I want the client to display an interactive command prompt, so that I can easily send messages and manage my connection.
 
