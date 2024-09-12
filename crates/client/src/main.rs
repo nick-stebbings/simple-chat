@@ -1,8 +1,8 @@
 use std::error::Error;
 
-use log::debug;
 use client::run;
 use common::config::get_config;
+use log::debug;
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
@@ -11,7 +11,7 @@ pub async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     match get_config() {
         Ok(config_values) => {
             let address = format!("{}:{}", config_values.host, config_values.port);
-            
+
             match run(address).await {
                 Ok(_) => Ok(()),
                 Err(e) => {
@@ -19,7 +19,7 @@ pub async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                     Err(e)
                 }
             }
-        },
+        }
         Err(_e) => {
             eprintln!("Error: Your environment variables are not set for HOST and PORT. Exiting.");
             Ok(())
