@@ -1,21 +1,28 @@
-use clap::{arg, command, Parser};
+use std::error::Error;
+
+use log::debug;
 use client::run;
 use common::config::get_config;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-pub struct Args {
-    #[arg(short, long, default_value = "anon")]
-    pub username: String,
-}
-
 #[tokio::main]
-pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config_values = get_config()?;
-    let address = format!("{}:{}", config_values.host, config_values.port);
+pub async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
+    env_logger::init();
 
-    let args = Args::parse();
-    println!("Hello, {}!", args.username);
-
-    run(address).await
+    match get_config() {
+        Ok(config_values) => {
+            let address = format!("{}:{}", config_values.host, config_values.port);
+            
+            match run(address).await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    debug!("Error running the client: {}", e);
+                    Err(e)
+                }
+            }
+        },
+        Err(_e) => {
+            eprintln!("Error: Your environment variables are not set for HOST and PORT. Exiting.");
+            Ok(())
+        }
+    }
 }
