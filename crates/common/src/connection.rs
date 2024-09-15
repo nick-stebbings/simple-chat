@@ -29,7 +29,7 @@ impl<S: AsyncWrite + AsyncRead + Unpin> Connection<S> {
                 Err(e) => Err(e.into()),
             }
         } else {
-            println!("result:");
+            println!("Client closed connection");
             Ok(None)
         }
     }
