@@ -1,8 +1,12 @@
 use crate::user::User;
-use std::collections::{hash_map::Entry, HashMap};
+use common::command::Command;
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    sync::RwLock,
+    sync::{mpsc, Mutex, RwLock},
 };
 
 /**
@@ -12,7 +16,7 @@ pub struct UserPool<S>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    users: RwLock<HashMap<String, User<S>>>,
+    users: RwLock<HashMap<String, Arc<Mutex<User<S>>>>>,
 }
 
 impl<S> UserPool<S>
@@ -28,19 +32,26 @@ where
     /**
      * Adds a unique user to the user pool.
      */
-    pub async fn add_user(&self, user: User<S>) {
+    pub async fn add_user(&self, user: Arc<Mutex<User<S>>>) {
         let mut hashmap = self.users.write().await;
 
-        let username = user.username.clone();
+        let username = user.lock().await.username.clone();
+
         match hashmap.entry(username) {
             Entry::Occupied(_) => {
-                let _ = user.msg_sender.send("Username is taken".to_string()).await;
+                let _ = user
+                    .lock()
+                    .await
+                    .msg_sender
+                    .send("username_taken".to_string())
+                    .await;
             }
             Entry::Vacant(entry) => {
                 entry.insert(user);
             }
         }
     }
+
     /**
      * Removes a user from the user pool
      */
@@ -50,6 +61,7 @@ where
             entry.remove();
         }
     }
+
     /**
      * Broadcasts a message to all other users
      */
@@ -57,7 +69,49 @@ where
         let users = self.users.read().await;
         for (username, user) in users.iter() {
             if username.as_str() != sender_username {
-                let _ = user.msg_sender.send(message.to_string()).await;
+                let _ = user.lock().await.msg_sender.send(message.to_string()).await;
+            }
+        }
+    }
+    /**
+     * Broadcasts a message to the client telling them to choose another username
+     */
+    pub async fn alert_duplicate_username(&self, user: Arc<Mutex<User<S>>>) {
+        let _send = user
+            .lock()
+            .await
+            .conn
+            .send_command(Command::UsernameTaken)
+            .await;
+    }
+
+    /**
+     * Watches for the next command from a user and handles it.
+     */
+    pub async fn watch_for_next_command(
+        &self,
+        mut rx: mpsc::Receiver<String>,
+        user: Arc<Mutex<User<S>>>,
+    ) {
+        while let Some(command) = rx.recv().await {
+            println!("user pool handling command.. {}", command.clone());
+            match common::command::parse_command(command.as_str()) {
+                Some(Command::SendMessage(message)) => {
+                    self.broadcast(user.lock().await.username.clone(), &message)
+                        .await;
+                }
+                Some(Command::Leave) => {
+                    self.remove_user_with_username(user.lock().await.username.clone())
+                        .await;
+                    break;
+                }
+                Some(Command::UsernameTaken) => {
+                    self.alert_duplicate_username(user.clone()).await;
+                    break;
+                }
+                _ => {
+                    println!("no more user commands :(")
+                }
             }
         }
     }
@@ -67,6 +121,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
+    use common::connection::Connection;
     use tokio::{
         io::{duplex, DuplexStream},
         sync::{mpsc, Mutex},
@@ -84,11 +139,11 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx,
             msg_receiver: Arc::new(Mutex::new(rx)),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
 
         // Act
-        user_pool.add_user(user).await;
+        user_pool.add_user(Arc::new(Mutex::new(user))).await;
         let users = user_pool.users.read().await;
 
         // Assert
@@ -107,18 +162,18 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx1,
             msg_receiver: Arc::new(Mutex::new(rx1)),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
         let user2 = User {
             username: "anon2".to_string(),
             msg_sender: tx2,
             msg_receiver: Arc::new(Mutex::new(rx2)),
-            stream: stream2,
+            conn: Connection::new(stream2),
         };
 
         // Act
-        user_pool.add_user(user1).await;
-        user_pool.add_user(user2).await;
+        user_pool.add_user(Arc::new(Mutex::new(user1))).await;
+        user_pool.add_user(Arc::new(Mutex::new(user2))).await;
         let users = user_pool.users.read().await;
 
         // Assert
@@ -138,20 +193,19 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx1,
             msg_receiver: Arc::new(Mutex::new(rx1)),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
         let user2 = User {
             username: "anon".to_string(),
             msg_sender: tx2,
             msg_receiver: Arc::new(Mutex::new(rx2)),
-            stream: stream2,
+            conn: Connection::new(stream2),
         };
 
         // Act
-        user_pool.add_user(user1).await;
-        user_pool.add_user(user2).await;
-        let users: tokio::sync::RwLockReadGuard<'_, HashMap<String, User<DuplexStream>>> =
-            user_pool.users.read().await;
+        user_pool.add_user(Arc::new(Mutex::new(user1))).await;
+        user_pool.add_user(Arc::new(Mutex::new(user2))).await;
+        let users = user_pool.users.read().await;
 
         // Assert
         assert!(users.contains_key("anon"));
@@ -168,12 +222,12 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx1,
             msg_receiver: Arc::new(Mutex::new(rx1)),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
 
         // Act
         let username = user1.username.clone();
-        user_pool.add_user(user1).await;
+        user_pool.add_user(Arc::new(Mutex::new(user1))).await;
         user_pool.remove_user_with_username(username).await;
         let users = user_pool.users.read().await;
 
@@ -195,19 +249,19 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx1.clone(),
             msg_receiver: Arc::new(Mutex::new(rx1)),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
         let user2 = User {
             username: "anon2".to_string(),
             msg_sender: tx2,
             msg_receiver: rx2_by_ref.clone(),
-            stream: stream2,
+            conn: Connection::new(stream2),
         };
 
         // Act
         let user1_name = user1.username.clone();
-        user_pool.add_user(user1).await;
-        user_pool.add_user(user2).await;
+        user_pool.add_user(Arc::new(Mutex::new(user1))).await;
+        user_pool.add_user(Arc::new(Mutex::new(user2))).await;
 
         user_pool.broadcast(user1_name, "Hello world!").await;
 
@@ -233,19 +287,19 @@ mod tests {
             username: "anon".to_string(),
             msg_sender: tx1.clone(),
             msg_receiver: rx1_by_ref.clone(),
-            stream: stream1,
+            conn: Connection::new(stream1),
         };
         let user2 = User {
             username: "anon2".to_string(),
             msg_sender: tx2,
             msg_receiver: rx2_by_ref.clone(),
-            stream: stream2,
+            conn: Connection::new(stream2),
         };
 
         // Act
         let user1_name = user1.username.clone();
-        user_pool.add_user(user1).await;
-        user_pool.add_user(user2).await;
+        user_pool.add_user(Arc::new(Mutex::new(user1))).await;
+        user_pool.add_user(Arc::new(Mutex::new(user2))).await;
 
         user_pool.broadcast(user1_name, "Hello world!").await;
 
