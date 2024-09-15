@@ -25,7 +25,7 @@ pub async fn run_cli(tx: Arc<Sender<Command>>) {
             }
         };
 
-        match parse_command(&line) {
+        match common::command::parse_command(&line) {
             Some(command) => {
                 if let Err(e) = tx.send(command).await {
                     eprintln!("Error sending command: {}", e);
@@ -33,17 +33,6 @@ pub async fn run_cli(tx: Arc<Sender<Command>>) {
             }
             None => println!("\n\rInvalid command, please try again."),
         }
-    }
-}
-
-fn parse_command(input: &str) -> Option<Command> {
-    if input.starts_with("send ") {
-        let msg = input.strip_prefix("send ")?.to_string();
-        Some(Command::SendMessage(msg))
-    } else if input == "leave" {
-        Some(Command::Leave)
-    } else {
-        None
     }
 }
 
