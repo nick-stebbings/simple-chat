@@ -4,31 +4,31 @@
 ### Basic requirements
 - one chat room.
 - users may freely join or leave (no auth/authz)
-- ~~user may send messages to the room~~
-- ~~messages will be sent to all connected users minus the sender.~~
+- user may send messages to the room
+- messages will be sent to all connected users minus the sender.
 
 - high throughput: all code should be non-blocking for maximum concurrency.
 
 ### Extra requirements
 - include both unit and integration tests where necessary.
-- ~~format using the standard formatting tool.~~
+- format using the standard formatting tool.
 - code must compile without clippy errors.
 
 ### Bonus
-- ~~git commit hook for formatting, compilation, linting~~
+- git commit hook for formatting, compilation, linting
 - GH action send a message from client to server without failure, run on push/commit to main
 
 ## User Stories
 ### Client
   User Story 1: Connect to the Server
     As a client user,
-    ~~I want to specify the host, port, and username via environment ~~variables or command line arguments, so that I can connect to the chat server with my unique identifier.
+    I want to specify the host, port, and username via environment variables or command line arguments, so that I can connect to the chat server with my unique identifier.
 
-  ~~User Story 2: Automatic Connection~~
+  User Story 2: Automatic Connection
     As a client user,
     I want the client to automatically connect to the chat server upon initialization using the specified host and port, so that I can start chatting without manual connection steps.
 
-  ~~User Story 3: Interactive Command Prompt~~
+  User Story 3: Interactive Command Prompt
     As a client user,
     I want the client to display an interactive command prompt, so that I can easily send messages and manage my connection.
 
@@ -53,7 +53,7 @@
 ### Performance
 The server should be able to support many users without a large delay
   -- use tokio to spawn a thread for each user
-  -- ~~use Rwlock as users will be written far less than read.~~
+  -- use Rwlock as users will be written far less than read.
   -- Use Arc to pass multiple shared references to a mutable UserPool
 The server should be able to support many users with a small memory footprint
  -- use lazy async in tokio, preserving memory
@@ -62,16 +62,16 @@ The server should be able to support many users with a small memory footprint
 - tokio
  -- spawn
  -- messaging
- -- ~~tcp~~
+ -- tcp
 - clap
  - args: [username, msg]
-- ~~serde~~
-- ~~dotenv~~
+- serde
+- dotenv
 
 ## Data structures
 ### User
-~~struct User~~
-  ~~username - String
+struct User
+  username - String
   msg_sender - Sender
   msg_receiver - Receiver
   strem - TCPStream
@@ -79,7 +79,7 @@ The server should be able to support many users with a small memory footprint
 - Sends and receives messages to other users
 
 ### User Manager
-~~struct UserPool~~
+struct UserPool
   users: RWLock<HashMap<String, User>> (username -> user)
 #### Responsibilities:
 - Keeps track of server users
