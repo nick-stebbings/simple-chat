@@ -2,6 +2,8 @@ use std::{error::Error, sync::Arc};
 mod cli;
 use cli::Args;
 use common::{command::Command, connection::Connection};
+use log::debug;
+use tokio::sync::Notify;
 use tokio::{
     net::TcpStream,
     sync::{mpsc, Mutex},
@@ -17,33 +19,36 @@ pub async fn run(address: String) -> Result<(), Box<dyn Error + Sync + Send>> {
     let (tx, mut rx) = mpsc::channel::<Command>(1024);
     let sender_ref = Arc::new(tx);
     let connection_clone = connection.clone();
-    let connection_handle = task::spawn(async move {
-        println!("Connected to the server at {}", address);
 
-        let send_task = async {
-            if let Err(e) = connection_clone
-                .lock()
-                .await
+    let notify = Arc::new(Notify::new());
+    let notify_for_join = notify.clone();
+    let notify_for_cli = notify.clone();
+
+    let connection_handle = task::spawn(async move {
+        let tt_connection = connection.clone();
+        tokio::spawn(async move {
+            let mut connection_lock = tt_connection.lock().await;
+            connection_lock
                 .send_command(Command::Join(opts.username))
                 .await
-            {
-                println!("Could not register user in server: {}", e);
-                return Err::<(), Box<dyn Error + Sync + Send + 'static>>(Box::new(e));
-            }
-            while let Some(command) = rx.recv().await {
-                println!("Sending command: {:?}", command); // Log sending command
-                match connection_clone.lock().await.send_command(command).await {
-                    Ok(_) => println!("Command sent successfully"), // Log success
-                    Err(e) => {
-                        println!("Failed to send command: {}", e); // Log error
-                        return Err::<(), Box<dyn Error + Sync + Send + 'static>>(Box::new(e));
-                    }
-                }
-            }
-            Ok::<(), Box<dyn Error + Sync + Send + 'static>>(())
-        };
+                .unwrap();
+            println!("Joined server at: {:?}", address.clone());
+            notify_for_join.notify_one();
+            notify_for_join.notify_one();
+        });
 
-        let recv_task = async {
+        notify.notified().await;
+
+        while let Some(command) = rx.recv().await {
+            let tt_connection = connection.clone();
+            tokio::spawn(async move {
+                let mut connection_lock = tt_connection.lock().await;
+                debug!("Sent command : {:?}", command.to_string().clone());
+                connection_lock.send_command(command).await.unwrap();
+            });
+        }
+
+        tokio::spawn(async move {
             loop {
                 match connection_clone.lock().await.read_command().await {
                     Ok(Some(command)) => {
@@ -64,12 +69,11 @@ pub async fn run(address: String) -> Result<(), Box<dyn Error + Sync + Send>> {
                 }
             }
             Ok::<(), Box<dyn Error + Sync + Send + 'static>>(())
-        };
-
-        tokio::join!(send_task, recv_task)
+        });
     });
 
     let cli_handle = task::spawn(async move {
+        notify_for_cli.notified().await;
         loop {
             cli::run_cli(sender_ref.clone()).await;
         }

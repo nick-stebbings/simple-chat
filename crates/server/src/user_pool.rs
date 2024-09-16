@@ -1,5 +1,6 @@
 use crate::user::User;
 use common::command::Command;
+use log::debug;
 use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
@@ -93,6 +94,7 @@ where
         mut rx: mpsc::Receiver<String>,
         user: Arc<Mutex<User<S>>>,
     ) {
+        debug!("Start handling command..",);
         while let Some(command) = rx.recv().await {
             println!("user pool handling command.. {}", command.clone());
             match common::command::parse_command(command.as_str()) {

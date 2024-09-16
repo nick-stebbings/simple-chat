@@ -1,5 +1,3 @@
-use common::connection::Connection;
-
 #[tokio::test]
 async fn test_server_client_interaction() {
     // Arrange...
