@@ -22,15 +22,16 @@ where
 type Receiver<S> = Arc<Mutex<mpsc::Receiver<S>>>;
 
 impl<S: AsyncRead + AsyncWrite + Unpin> User<S> {
-    pub async fn handle_commands(&mut self, user_pool: Arc<&UserPool<S>>) {
+    /**
+     * Handles a command from the User's connection (from the client)
+     */
+    pub async fn handle_commands(&mut self, user_pool: Arc<UserPool<S>>) {
         loop {
             match self.conn.read_command().await.unwrap() {
                 Some(Command::SendMessage(message)) => {
-                    println!("user handling command.. {}", message.clone());
                     let _send = self.msg_sender.send(format!("send {}", message)).await;
                 }
                 Some(Command::Leave) => {
-                    println!("user handling leave command.. ");
                     let _send = self.msg_sender.send("leave".to_string()).await;
                     break;
                 }

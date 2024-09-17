@@ -10,7 +10,6 @@ use tokio_util::codec::{Framed, LinesCodec, LinesCodecError};
 pub struct Connection<S> {
     pub framed: Framed<S, LinesCodec>,
 }
-// type SerdeStream = tokio_util::codec::Framed<Framed<TcpStream, LinesCode>, Json<Command, ()>>;
 
 impl<S: AsyncWrite + AsyncRead + Unpin> Connection<S> {
     pub fn new(stream: S) -> Self {

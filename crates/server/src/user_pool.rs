@@ -7,7 +7,7 @@ use std::{
 };
 use tokio::{
     io::{AsyncRead, AsyncWrite},
-    sync::{mpsc, Mutex, RwLock},
+    sync::{Mutex, RwLock},
 };
 
 /**
@@ -70,6 +70,7 @@ where
         let users = self.users.read().await;
         for (username, user) in users.iter() {
             if username.as_str() != sender_username {
+                debug!("SENDING");
                 let _ = user.lock().await.msg_sender.send(message.to_string()).await;
             }
         }
@@ -87,33 +88,24 @@ where
     }
 
     /**
-     * Watches for the next command from a user and handles it.
+     * Processes a command from a user.
      */
-    pub async fn watch_for_next_command(
-        &self,
-        mut rx: mpsc::Receiver<String>,
-        user: Arc<Mutex<User<S>>>,
-    ) {
-        debug!("Start handling command..",);
-        while let Some(command) = rx.recv().await {
-            println!("user pool handling command.. {}", command.clone());
-            match common::command::parse_command(command.as_str()) {
-                Some(Command::SendMessage(message)) => {
-                    self.broadcast(user.lock().await.username.clone(), &message)
-                        .await;
-                }
-                Some(Command::Leave) => {
-                    self.remove_user_with_username(user.lock().await.username.clone())
-                        .await;
-                    break;
-                }
-                Some(Command::UsernameTaken) => {
-                    self.alert_duplicate_username(user.clone()).await;
-                    break;
-                }
-                _ => {
-                    println!("no more user commands :(")
-                }
+    pub async fn process_command(&self, command: Option<Command>, user: Arc<Mutex<User<S>>>) {
+        debug!("Handling command");
+        match command {
+            Some(Command::SendMessage(message)) => {
+                self.broadcast(user.lock().await.username.clone(), &message)
+                    .await;
+            }
+            Some(Command::Leave) => {
+                self.remove_user_with_username(user.lock().await.username.clone())
+                    .await;
+            }
+            Some(Command::UsernameTaken) => {
+                self.alert_duplicate_username(user.clone()).await;
+            }
+            _ => {
+                println!("Not a valid command :(")
             }
         }
     }
