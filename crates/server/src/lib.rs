@@ -3,7 +3,11 @@ mod user_pool;
 
 use std::sync::Arc;
 
-use common::{command::Command, connection::Connection};
+use common::{
+    command::{parse_command, Command},
+    connection::Connection,
+};
+use log::debug;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::{mpsc, Mutex},
@@ -19,31 +23,53 @@ pub async fn run(address: String) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let (socket, _) = listener.accept().await?;
         let user_pool: Arc<UserPool<TcpStream>> = user_pool.clone();
-        let mut connection = Connection::new(socket);
 
-        if let Some(Command::Join(username)) = connection.read_command().await.unwrap() {
-            tokio::spawn(async move {
-                // Make a channel from user <-> users
-                let (_, rx1) = mpsc::channel(200);
-                // Make a channel from user -> user pool
-                let (tx, rx2) = mpsc::channel::<String>(1024);
-                let user: Arc<Mutex<User<tokio::net::TcpStream>>> = Arc::new(Mutex::new(User {
-                    username: username.clone(),
-                    msg_sender: tx,
-                    msg_receiver: Arc::new(Mutex::new(rx1)),
-                    conn: connection,
-                }));
+        tokio::spawn(async move {
+            let mut connection = Connection::new(socket);
 
-                user_pool.add_user(user.clone()).await;
-                // Tell the pool to wait for commands from this user
-                user_pool.watch_for_next_command(rx2, user.clone()).await;
-                // Tell the user to listen on its socket for commands
-                user.lock()
-                    .await
-                    .handle_commands(Arc::new(&user_pool))
-                    .await;
-            });
-        } else {
-        }
+            match connection.read_command().await {
+                Ok(Some(Command::Join(username))) => {
+                    // Channels for communication
+                    let (tx_user_to_pool, rx_pool_from_user) = mpsc::channel(200);
+                    let (_, user_from_pool) = mpsc::channel::<String>(1024);
+
+                    let connected_user = User {
+                        username: username.clone(),
+                        msg_sender: tx_user_to_pool.clone(),
+                        msg_receiver: Arc::new(Mutex::new(user_from_pool)),
+                        conn: connection,
+                    };
+                    let user = Arc::new(Mutex::new(connected_user));
+                    user_pool.add_user(user.clone()).await;
+
+                    let user_cloned = user.clone();
+                    let user_pool_cloned = user_pool.clone();
+                    // Spawn a task to handle incoming commands from this user's connection
+                    tokio::spawn(async move {
+                        println!("Server processing commands:");
+                        let mut local_rx = rx_pool_from_user; // Take ownership of the receiver
+                        while let Some(message) = local_rx.recv().await {
+                            println!("Server processing command: {:?}", message);
+                            // user_pool_cloned
+                            //     .process_command(parse_command(message.as_str()), user.clone())
+                            //     .await;
+                        }
+                    });
+                    // Spawn a separate task for this user to handle their commands
+                    let user_pool_cloned_for_comm = user_pool.clone();
+                    let user = user_cloned.clone();
+                    tokio::spawn(async move {
+                        user.lock()
+                            .await
+                            .handle_commands(user_pool_cloned_for_comm)
+                            .await;
+                    });
+                }
+                Ok(_) => {}
+                Err(e) => {
+                    eprintln!("Error reading initial command: {}", e);
+                }
+            }
+        });
     }
 }
