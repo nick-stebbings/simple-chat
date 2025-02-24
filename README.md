@@ -1,71 +1,65 @@
-# Simple Chat
+# Simple Asynchronous Chat Server
 
-## Summary
+This project is a simple asynchronous chat server and CLI client built in Rust. It was developed as a Rust job assignment to demonstrate proficiency in async Rust.
 
-You have been tasked with writing a simple asynchronous chat server and CLI
-client.
+I used Tokio channels, Arc smart pointers for thread-safe sharing of state, and utilise the actor pattern to prevent deadlocks.
 
-Since this is a simple chat server there is only a single room. Users may
-freely join or leave this room. They may also send messages to the room, which
-will be sent to all connected users minus the sender.
+## Features
 
-Even though the server is simple, it has high throughput. Because of this, all
-code should be non-blocking for maximum concurrency.
+- **Single Room Chat**: Users can join, leave, and send messages in a single chat room.
+- **High Throughput**: Designed for maximum concurrency with non-blocking code.
+- **Unique Usernames**: Ensures each user has a unique identifier.
+- **Efficient Resource Usage**: Supports many users with minimal delay and memory footprint.
 
-The following is a rough specification of the server and client.
+## Technologies Used
 
-## Server
+- **Async Rust**: Async runtime for polling the top-level Future.
+- **Smart Pointer & Thread-safe data structure (Arc<Mutex>)**: To manage shared state safely between tasks.
+- **Tokio Channels**: For message passing between tasks.
 
-* The servers job is to manage users.
-* It should be able to receive a message from a user and process it.
-* The user may wish to join, leave or send a message through the chat server.
-* Any other user who is currently connected should get the message sent to
-them.
-* The user who sent the message should not get the message.
-* When a user sends a leave message, or disconnects their client, the server
-should no longer send messages to them, and do any internal bookkeeping to 
-clean up.
-* Username's should be unique.
-* The server should be able to support many users without a large delay
-* The server should be able to support many users with a small memory footprint
+## Server Specifications
 
+- [ ] Manage users and their messages.
+- [ ] Process join, leave, and message commands.
+- [ ] Broadcast messages to all users except the sender.
+- [ ] Clean up resources when users leave or disconnect.
+- [ ] Support many users efficiently.
 
-## Client
+## Client Specifications
 
-* The client is an async CLI program.
-* It is responsible for sending messages to the server and displaying any
-messages from the server.
-* The client should accept environment variables or command line arguments
-indicating the host and port where the server is listening. It should also
-accept a username that will be used as an identifier on the server.
-* The client should automatically connect to the chat server upon 
-initialization using the specified host and port.
-* The client should display an interactive command prompt. The prompt should 
-be able to handle the following inputs:
-    * `send <MSG>`  where `<MSG>`  is the message that should be sent to the 
-    server
-    * `leave` this will disconnect the client from the server and exit the CLI.
-
+- [ ] Async CLI program for user interaction.
+- [ ] Connects to server using host and port from environment variables or command line arguments.
+- [ ] Interactive command prompt with:
+  - [ ] `send <MSG>`: Send a message to the server.
+  - [ ] `leave`: Disconnect from the server and exit.
 
 ## Additional Requirements
 
-* Your source should contain both unit and integration tests where necessary.
-* All code must be formatted using the standard formatting tool.
-* Code must compile without clippy errors.
+- [ ] Include unit and integration tests.
+- [ ] Format code using the standard tool.
+- [ ] Ensure code compiles without clippy errors.
 
-## Submission
+## Bonus Features
 
-Please fork this repository to your own GitHub account and submit a pull
-request to your own repository. Your pull request should include a
-video of a working demo at the top along with any other key information
-that should be highlighted. A link to the pull request can be submitted when
-it is ready for review.
+- [ ] Pre-commit hook for code formatting and error checking.
+- [ ] GitHub Action to test server-client interaction on code push.
 
-## Bonus
+## Original Submission Instructions:
 
-* Include a pre-commit hook that will ensure that all code is formatted, compiles
-without error, and is free of clippy errors.
-* Create a GitHub Action that will launch your chat server and attempt to 
-send a message to the server from the client. Make sure that niether the server
-or client exit with a failure. This action should be run anytime new code
-is pushed to a branch or landed on the main branch.
+1. Fork this repository to your GitHub account.
+2. Submit a pull request to our repository.
+3. Include a demo video at the top of the pull request.
+4. Submit the pull request link for review.
+
+### Prerequisites
+
+- Rust installed on your machine.
+
+### Running the Server
+`cargo run --bin server`
+
+### Running the Client
+`cargo run --bin client`  
+
+### Running Tests
+`cargo test`  
