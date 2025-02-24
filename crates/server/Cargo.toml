@@ -1,0 +1,21 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tokio = { version = "1.40.0", features = ["macros", "io-util", "net", "rt-multi-thread", "sync", "time"] }
+futures-util = { version = "0.3.30", features = ["sink"] }
+tokio-util = { version = "0.7.12", features = ["full"] }
+serde = { version = "1", features = ["derive"]}
+bytes = "1"
+common = { path = "../common" }
+log = "0.4.22"
+
+[dev-dependencies.cargo-husky]
+version = "1.5.0"
+default-features = false
+features = ["precommit-hook", "run-cargo-test", "run-cargo-clippy", "run-cargo-fmt"]

@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "crates/client",
+    "crates/server",
+    "crates/common",
+]
+resolver = "2"
+
+[workspace.dependencies]
+cargo-husky = { version = "1.5.0", features = ["precommit-hook", "run-cargo-test", "run-cargo-clippy", "run-cargo-fmt"] }
